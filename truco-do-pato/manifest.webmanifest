@@ -1,0 +1,18 @@
+{
+  "name": "Truco do Pato",
+  "short_name": "Truco do Pato",
+  "description": "Marcador de pontos de truco com um pato de óculos escuros que zoa o adversário.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#072a1d",
+  "theme_color": "#072a1d",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
