@@ -34,7 +34,7 @@ Pra instalar:
 
 > **Samsung Galaxy:** se aparecer que a instalação foi bloqueada pelo *Bloqueador automático*, vá em *Configurações → Segurança e privacidade → Bloqueador automático*, desligue, instale o APK e ligue de novo depois, se quiser.
 
-No APK, o "TRUCO!" é gritado pela voz do próprio Android (precisa ter a voz em português instalada; nas Configurações do celular, procure por *texto em voz*), a vibração é a nativa do celular, a tela fica sempre acesa e o botão voltar fecha o menu antes de sair do app. O som do pato sai no volume de mídia.
+No APK, o "TRUCO!" é gritado pela voz do próprio Android (precisa ter a voz em português instalada; nas Configurações do celular, procure por *texto em voz*), a vibração é a nativa do celular, a tela fica sempre acesa e o botão voltar fecha o menu antes de sair do app (na tela de vitória, ele começa a próxima partida; o desfazer volta). O som do pato sai no volume de mídia.
 
 O app só pede permissão pra vibrar. Não tem anúncio, não coleta nada e não acessa a internet.
 

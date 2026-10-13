@@ -210,11 +210,13 @@ public class MainActivity extends Activity {
         tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
-                if (tts == null) return;
+                // Sem motor de voz, o erro chega aqui ainda dentro do construtor, com tts nulo:
+                // por isso o status é conferido antes.
                 if (status != TextToSpeech.SUCCESS) {
                     ttsState = "missing";
                     return;
                 }
+                if (tts == null) return;
                 int result = tts.setLanguage(new Locale("pt", "BR"));
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                     result = tts.setLanguage(new Locale("pt"));
@@ -328,7 +330,8 @@ public class MainActivity extends Activity {
             super.onBackPressed();
             return;
         }
-        // Voltar fecha o menu ou encerra a edição do nome do time; se não tiver nada aberto, sai.
+        // Voltar fecha o menu, encerra a edição do nome do time ou, na tela de vitória, começa a
+        // próxima partida (dá pra desfazer); se não tiver nada aberto, sai.
         web.evaluateJavascript("(window.trucoBack && window.trucoBack()) ? 1 : 0", new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String handled) {
@@ -345,6 +348,19 @@ public class MainActivity extends Activity {
     protected void onStart() {
         super.onStart();
         stateSaved = false;
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        // Quem seguiu o aviso e instalou a voz em português nas Configurações volta por aqui.
+        if ("missing".equals(ttsState)) {
+            if (tts != null) tts.shutdown();
+            tts = null;
+            ttsReady = false;
+            ttsState = "pending";
+            startSpeech();
+        }
     }
 
     @Override
