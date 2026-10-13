@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mesmas cores do feltro e do pato no app web. -->
+    <color name="felt_deep">#FF072A1D</color>
+    <color name="felt">#FF0E4A34</color>
+    <color name="pato">#FFFFC928</color>
+</resources>

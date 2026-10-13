@@ -1058,6 +1058,9 @@ body.shake .app { animation: shake 0.4s; }
 
   /* ---------- Narrador: grita o truco com a voz do aparelho, se tiver português ---------- */
 
+  // No APK, o Android injeta window.TrucoAndroid com voz (TextToSpeech) e vibração nativas.
+  const native = window.TrucoAndroid || null;
+
   const Voice = (() => {
     let voice = null;
     const ok = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
@@ -1073,7 +1076,12 @@ body.shake .app { animation: shake 0.4s; }
     }
     return {
       shout(text) {
-        if (!ok || !voice || !state.prefs.voice || !state.prefs.sound) return;
+        if (!state.prefs.voice || !state.prefs.sound) return;
+        if (native && native.speak) {
+          try { native.speak(text); } catch (e) {}
+          return;
+        }
+        if (!ok || !voice) return;
         try {
           speechSynthesis.cancel();
           const u = new SpeechSynthesisUtterance(text);
@@ -1088,7 +1096,11 @@ body.shake .app { animation: shake 0.4s; }
   })();
 
   function buzz(pattern) {
-    try { if (state.prefs.vibrate && navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+    if (!state.prefs.vibrate) return;
+    try {
+      if (native && native.vibrate) native.vibrate(String([].concat(pattern)));
+      else if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) {}
   }
 
   // Mantém a tela acesa durante a partida, quando o aparelho deixa.
@@ -1449,6 +1461,14 @@ body.shake .app { animation: shake 0.4s; }
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeSheet(menuSheet); }
   });
+
+  // Botão voltar do Android: fecha o que estiver aberto antes de sair do app.
+  window.trucoBack = () => {
+    if (!menuSheet.hidden) { closeSheet(menuSheet); return true; }
+    const el = document.activeElement;
+    if (el && el.classList && el.classList.contains('team-name')) { el.blur(); return true; }
+    return false;
+  };
 
   $('#menuBtn').addEventListener('click', () => openSheet(menuSheet));
   undoBtn.addEventListener('click', undo);

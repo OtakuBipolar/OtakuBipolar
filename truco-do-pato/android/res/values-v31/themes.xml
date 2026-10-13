@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: a tela de abertura usa o feltro de fundo e o ícone do pato. -->
+    <style name="Theme.TrucoDoPato" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/felt_deep</item>
+        <item name="android:colorBackground">@color/felt_deep</item>
+        <item name="android:colorPrimary">@color/felt</item>
+        <item name="android:colorPrimaryDark">@color/felt_deep</item>
+        <item name="android:colorAccent">@color/pato</item>
+        <item name="android:statusBarColor">@color/felt_deep</item>
+        <item name="android:navigationBarColor">@color/felt_deep</item>
+        <item name="android:windowSplashScreenBackground">@color/felt_deep</item>
+    </style>
+</resources>
