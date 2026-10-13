@@ -1,0 +1,5 @@
+# Scripts precisam de fim de linha LF até num checkout do Windows (rodam no WSL).
+*.sh text eol=lf
+*.apk binary
+*.woff2 binary
+*.png binary

@@ -115,6 +115,7 @@ button:focus-visible, input:focus-visible {
   place-items: center;
   border-radius: 12px;
   border: 1.5px solid var(--felt-line);
+  background: rgba(7, 42, 29, 0.7);
   background: color-mix(in srgb, var(--felt-deep) 70%, transparent);
   color: var(--chalk);
   padding: 0;
@@ -159,6 +160,7 @@ button:focus-visible, input:focus-visible {
 }
 .team[data-team="1"] { --team-ink: var(--copas); }
 .team.onze {
+  box-shadow: 0 0 0 3px var(--pato), 0 0 26px 2px rgba(255, 201, 40, 0.55);
   box-shadow: 0 0 0 3px var(--pato), 0 0 26px 2px color-mix(in srgb, var(--pato) 55%, transparent);
 }
 .team.nudge { animation: nudge 0.32s; }
@@ -380,6 +382,7 @@ button:focus-visible, input:focus-visible {
   min-height: 52px;
   border-radius: 14px;
   border: 1.5px dashed var(--felt-line);
+  background: rgba(7, 42, 29, 0.55);
   background: color-mix(in srgb, var(--felt-deep) 55%, transparent);
   color: var(--chalk);
   padding: 6px 8px;
@@ -462,7 +465,7 @@ button:focus-visible, input:focus-visible {
 /* ---------- TRUCO! na tela inteira ---------- */
 .flash {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   display: grid;
   place-content: center;
   justify-items: center;
@@ -470,6 +473,7 @@ button:focus-visible, input:focus-visible {
   pointer-events: none;
   z-index: 30;
   opacity: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(207, 35, 56, 0.55) 0%, transparent 65%);
   background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--copas) 55%, transparent) 0%, transparent 65%);
 }
 .flash.go { animation: flash 1.05s ease-out; }
@@ -495,7 +499,7 @@ body.shake .app { animation: shake 0.4s; }
 /* ---------- Folhas (menu e vitória) ---------- */
 .sheet-wrap {
   position: fixed;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   z-index: 40;
   display: flex;
   align-items: flex-end;
@@ -503,7 +507,7 @@ body.shake .app { animation: shake 0.4s; }
 }
 .sheet-backdrop {
   position: absolute;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   background: rgba(3, 18, 12, 0.72);
   animation: fade 0.2s;
 }
@@ -539,6 +543,13 @@ body.shake .app { animation: shake 0.4s; }
   min-height: 40px;
 }
 .toggle input { width: 22px; height: 22px; accent-color: var(--felt); flex: none; }
+.voice-hint {
+  margin: -6px 0 0 34px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--copas);
+  font-weight: 700;
+}
 .sheet-actions { display: grid; gap: 8px; }
 .btn-wide {
   min-height: 50px;
@@ -610,7 +621,7 @@ body.shake .app { animation: shake 0.4s; }
   .zoar { min-height: 46px; }
   .duck-btn { width: 100px; }
 }
-@media (orientation: landscape) and (max-height: 540px) {
+@media (min-aspect-ratio: 8/5) and (max-height: 540px) {
   .app { max-width: 920px; }
   .table {
     grid-template-columns: 1fr minmax(170px, 0.9fr) 1fr;
@@ -626,6 +637,26 @@ body.shake .app { animation: shake 0.4s; }
   .zoar, .hint { display: none; }
   .duck-btn { width: 120px; }
   .bubble { font-size: 14px; }
+}
+/* Celular deitado de verdade: barras do sistema deixam só uns 310-370px de altura. */
+@media (min-aspect-ratio: 8/5) and (max-height: 400px) {
+  .app { gap: 6px; padding-block: 4px 6px; }
+  .icon-btn { width: 36px; height: 36px; }
+  .brand-duck { width: 28px; height: 28px; }
+  .team { gap: 4px; padding-block: 6px; }
+  .team-name { font-size: 14px; padding-block: 0 2px; }
+  .score-num { font-size: 34px; }
+  .sticks { display: none; }
+  .chip { font-size: 10px; padding: 2px 8px; }
+  .btn-one { height: 34px; font-size: 20px; box-shadow: 0 3px 0 var(--felt-deep); }
+  .bets { gap: 4px; }
+  .btn-bet { height: 31px; }
+  .btn-bet b { font-size: 11px; }
+  .btn-bet span { font-size: 11px; }
+  .btn-minus { height: 28px; }
+  .wins strong { font-size: 13px; }
+  .duck-btn { width: 96px; }
+  .bubble { font-size: 13px; min-height: 0; padding: 6px 10px; }
 }
 
 /* ---------- Animações ---------- */
@@ -768,6 +799,7 @@ body.shake .app { animation: shake 0.4s; }
     <h2 id="menuTitle">Ajustes</h2>
     <label class="toggle"><input type="checkbox" id="optSound"> Som do pato</label>
     <label class="toggle"><input type="checkbox" id="optVoice"> Narrador grita TRUCO, SEIS, NOVE, DOZE</label>
+    <p class="voice-hint" id="voiceHint" hidden>Este celular não tem voz em português. Nas Configurações, procure por "texto em voz" e instale a voz em português.</p>
     <label class="toggle"><input type="checkbox" id="optVibrate"> Vibrar ao marcar ponto</label>
     <div class="sheet-actions">
       <button class="btn-wide btn-warn" id="resetGame" type="button">Zerar placar desta partida</button>
@@ -1465,12 +1497,19 @@ body.shake .app { animation: shake 0.4s; }
   // Botão voltar do Android: fecha o que estiver aberto antes de sair do app.
   window.trucoBack = () => {
     if (!menuSheet.hidden) { closeSheet(menuSheet); return true; }
+    if (!winSheet.hidden) return true;
     const el = document.activeElement;
     if (el && el.classList && el.classList.contains('team-name')) { el.blur(); return true; }
     return false;
   };
 
-  $('#menuBtn').addEventListener('click', () => openSheet(menuSheet));
+  $('#menuBtn').addEventListener('click', () => {
+    // A voz do Android inicia sozinha em segundo plano; confere na hora de abrir o menu.
+    let noVoice = false;
+    try { noVoice = !!(native && native.canSpeak && !native.canSpeak()); } catch (e) {}
+    $('#voiceHint').hidden = !noVoice;
+    openSheet(menuSheet);
+  });
   undoBtn.addEventListener('click', undo);
   $('#winUndo').addEventListener('click', undo);
   $('#nextGame').addEventListener('click', nextGame);
@@ -1503,7 +1542,8 @@ body.shake .app { animation: shake 0.4s; }
     document.querySelectorAll('[data-duck-clone]').forEach((slot) => {
       const c = src.cloneNode(true);
       c.removeAttribute('id');
-      slot.replaceChildren(c);
+      slot.textContent = '';
+      slot.appendChild(c);
     });
   }
 

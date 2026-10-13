@@ -24,13 +24,15 @@ O som do pato é gerado na hora pelo próprio navegador (Web Audio), sem arquivo
 
 ## App Android (APK)
 
-O APK fica em [`apk/TrucoDoPato.apk`](apk/TrucoDoPato.apk). Funciona do Android 7.0 em diante e não precisa de internet.
+O APK fica em [`apk/TrucoDoPato.apk`](apk/TrucoDoPato.apk). Funciona do Android 7.0 em diante e não precisa de internet. O placar é desenhado pelo *Android System WebView* do celular, que precisa estar atualizado pela Play Store (versão 87 ou mais nova, o normal em qualquer celular com a Play Store). Se estiver muito antigo, o app avisa ao abrir.
 
 Pra instalar:
 
-1. Abra o link do arquivo no celular e toque em **baixar** (ou passe o arquivo pro celular de outro jeito).
-2. Toque no arquivo baixado. Na primeira vez o Android pede pra **permitir instalar apps desta fonte** (do navegador ou do gerenciador de arquivos): permita e volte.
+1. Abra o link do arquivo no celular e toque em *View raw* ou no ícone de download (ou passe o arquivo pro celular de outro jeito).
+2. Toque no arquivo baixado. Na primeira vez o Android pede pra **permitir instalar apps desta fonte** (do navegador ou do gerenciador de arquivos): permita e volte. No Android 7, o aviso leva às Configurações: ative *Fontes desconhecidas* e volte.
 3. Toque em **Instalar**. Se o Play Protect avisar que não conhece o app, toque em *Mais detalhes → Instalar mesmo assim*. O aviso aparece pra qualquer app instalado fora da Play Store.
+
+> **Samsung Galaxy:** se aparecer que a instalação foi bloqueada pelo *Bloqueador automático*, vá em *Configurações → Segurança e privacidade → Bloqueador automático*, desligue, instale o APK e ligue de novo depois, se quiser.
 
 No APK, o "TRUCO!" é gritado pela voz do próprio Android (precisa ter a voz em português instalada; nas Configurações do celular, procure por *texto em voz*), a vibração é a nativa do celular, a tela fica sempre acesa e o botão voltar fecha o menu antes de sair do app. O som do pato sai no volume de mídia.
 
@@ -38,16 +40,16 @@ O app só pede permissão pra vibrar. Não tem anúncio, não coleta nada e não
 
 ### Gerar o APK de novo
 
-O código do app Android está em [`android/`](android/). O APK é montado sem Android Studio, só com JDK 17+, `curl`, `python3` e `unzip` (Linux ou macOS):
+O código do app Android está em [`android/`](android/). O APK é montado sem Android Studio, só com JDK 17+, `curl`, `python3` e `unzip` (Linux x86_64, WSL ou macOS):
 
 ```bash
 cd truco-do-pato/android
-./build.sh
+KEYSTORE=/caminho/release.p12 ./build.sh
 ```
 
 O script baixa as ferramentas do Maven Central (conferindo o SHA-256 de cada uma), empacota o `index.html` com as fontes embutidas, compila e assina o APK em `apk/TrucoDoPato.apk`.
 
-Na primeira vez ele cria uma chave de assinatura em `~/.truco-do-pato/release.p12`. **Guarde essa chave**: o Android só aceita atualizar o app por cima se o APK novo for assinado com a mesma chave. Com outra chave, é preciso desinstalar o antigo antes (e o placar salvo se perde). Pra usar uma chave sua: `KEYSTORE=/caminho/chave.p12 KEYSTORE_PASS=senha KEY_ALIAS=apelido ./build.sh`.
+**A chave de assinatura não fica no repositório.** O Android só aceita atualizar o app por cima se o APK novo for assinado com a mesma chave do instalado. O `apk/TrucoDoPato.apk` daqui foi assinado com o certificado de SHA-256 `76:7B:32:D0:F9:2C:CA:14:08:E5:1E:63:B5:B3:E9:D3:D0:84:E5:7F:C5:A0:76:FA:36:B3:CE:A3:DB:FF:81:BB` (apelido `truco`). Quem tem o arquivo `release.p12` dessa chave gera atualizações com o comando acima; guarde-o num lugar privado. Sem ele, `NEW_KEY=1 ./build.sh` cria uma chave nova, mas aí o app antigo precisa ser desinstalado antes (e o placar salvo se perde). Senha e apelido diferentes do padrão: `KEYSTORE_PASS=senha KEY_ALIAS=apelido`.
 
 Os ícones são PNGs gerados por `android/tools/make_icons.cjs` (precisa do Playwright). Só rode de novo se mudar o desenho.
 

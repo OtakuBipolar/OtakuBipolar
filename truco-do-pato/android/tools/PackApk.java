@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
@@ -37,7 +38,8 @@ import java.util.zip.ZipOutputStream;
 public final class PackApk {
     private static final int ALIGNMENT = 4;
     private static final int ALIGNMENT_EXTRA_ID = 0xd935; // mesmo campo que o zipalign/apksig usam
-    private static final long FIXED_TIME = 1199145600000L; // 2008-01-01, igual ao aapt2: build reproduzível
+    // Data fixa nos campos DOS (sem fuso horário): o mesmo build dá o mesmo zip em qualquer fuso.
+    private static final java.time.LocalDateTime FIXED_TIME = java.time.LocalDateTime.of(2008, 1, 1, 0, 0);
 
     public static void main(String[] args) throws Exception {
         if (args.length != 6) {
@@ -53,7 +55,11 @@ public final class PackApk {
         String pass = System.getenv("KEYSTORE_PASS");
         if (pass == null || pass.isEmpty()) throw new IllegalStateException("defina KEYSTORE_PASS");
 
-        File unsigned = new File(out.getPath() + ".unsigned");
+        // Intermediários ficam na pasta do build; o APK final só é trocado depois de verificado.
+        File work = base.getAbsoluteFile().getParentFile();
+        File unsigned = new File(work, "unsigned.apk");
+        File signed = new File(work, "signed.apk");
+        Files.deleteIfExists(signed.toPath());
         merge(base, dex, unsigned);
         checkAlignment(unsigned);
 
@@ -69,7 +75,7 @@ public final class PackApk {
         ApkSigner.SignerConfig signer = new ApkSigner.SignerConfig.Builder("TRUCO", key, certs).build();
         new ApkSigner.Builder(Collections.singletonList(signer))
                 .setInputApk(unsigned)
-                .setOutputApk(out)
+                .setOutputApk(signed)
                 .setMinSdkVersion(minSdk)
                 .setV1SigningEnabled(false)
                 .setV2SigningEnabled(true)
@@ -78,13 +84,14 @@ public final class PackApk {
                 .sign();
         Files.delete(unsigned.toPath());
 
-        checkAlignment(out);
-        ApkVerifier.Result result = new ApkVerifier.Builder(out).build().verify();
+        checkAlignment(signed);
+        ApkVerifier.Result result = new ApkVerifier.Builder(signed).build().verify();
         for (ApkVerifier.IssueWithParams w : result.getWarnings()) System.err.println("aviso: " + w);
         for (ApkVerifier.IssueWithParams e : result.getErrors()) System.err.println("erro: " + e);
         if (!result.isVerified() || !result.isVerifiedUsingV2Scheme()) {
             throw new IllegalStateException("assinatura do APK não passou na verificação");
         }
+        Files.move(signed.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
         System.out.println("assinado e verificado (esquema v2) -> " + out + " (" + out.length() / 1024 + " KB)");
     }
 
@@ -108,7 +115,7 @@ public final class PackApk {
     private static void write(ZipOutputStream zip, CountingOutputStream counter, String name, byte[] data,
                               boolean stored) throws IOException {
         ZipEntry out = new ZipEntry(name);
-        out.setTime(FIXED_TIME);
+        out.setTimeLocal(FIXED_TIME);
         if (stored) {
             CRC32 crc = new CRC32();
             crc.update(data);

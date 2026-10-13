@@ -2,11 +2,14 @@ package io.github.otakubipolar.trucodopato;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
@@ -16,6 +19,7 @@ import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -24,6 +28,8 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Casca nativa do Truco do Pato: um WebView em tela cheia com o app web empacotado
@@ -37,15 +43,32 @@ public class MainActivity extends Activity {
     private static final int MAX_VIBRATION_STEPS = 12;
     private static final long MAX_VIBRATION_MS = 1000;
     private static final int MAX_SPEECH_CHARS = 60;
+    private static final int MAX_TEXT_ZOOM = 130;
+    /** A página usa recursos do Chromium 87+ (inset, padding-inline, aspect-ratio). */
+    static final int MIN_WEBVIEW_VERSION = 87;
+
+    /** Quando o processo que desenha a página morreu pela última vez (pra não entrar em loop). */
+    private static long lastRendererDeath;
 
     private WebView web;
     private TextToSpeech tts;
     private volatile boolean ttsReady;
     private Vibrator vibrator;
+    private boolean stateSaved;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Android 7-13: abrir pelo "Abrir" do instalador e depois pelo ícone empilhava uma
+        // segunda tela com outro WebView, e a de baixo podia sobrescrever o placar salvo.
+        if (!isTaskRoot()) {
+            Intent intent = getIntent();
+            if (intent != null && Intent.ACTION_MAIN.equals(intent.getAction())
+                    && intent.hasCategory(Intent.CATEGORY_LAUNCHER)) {
+                finish();
+                return;
+            }
+        }
         // Placar de mesa: a tela não apaga no meio da partida.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         // Botões de volume mexem no volume de mídia, que é onde o quá toca.
@@ -64,6 +87,31 @@ public class MainActivity extends Activity {
         vibrator = findVibrator();
         startSpeech();
         web.loadUrl(APP_URL);
+        warnIfWebViewTooOld();
+    }
+
+    /** Celular com o WebView nunca atualizado abre a página quebrada; melhor avisar como resolver. */
+    private void warnIfWebViewTooOld() {
+        int version = chromeMajorVersion(web.getSettings().getUserAgentString());
+        if (version <= 0 || version >= MIN_WEBVIEW_VERSION) return;
+        new AlertDialog.Builder(this)
+                .setTitle("Atualize o WebView")
+                .setMessage("O componente que desenha o placar (Android System WebView) está muito antigo "
+                        + "neste celular, e o app pode não funcionar direito. Atualize o \"Android System "
+                        + "WebView\" e o \"Google Chrome\" na Play Store e abra o app de novo.")
+                .setPositiveButton("Entendi", null)
+                .show();
+    }
+
+    static int chromeMajorVersion(String userAgent) {
+        if (userAgent == null) return -1;
+        Matcher m = Pattern.compile("Chrome/(\\d+)").matcher(userAgent);
+        if (!m.find()) return -1;
+        try {
+            return Integer.parseInt(m.group(1));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     /**
@@ -95,7 +143,9 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
-        s.setTextZoom(100);                      // layout de tela única não aguenta fonte gigante
+        // Respeita o tamanho de fonte do sistema até 130%; acima disso o placar não cabe na tela.
+        float fontScale = getResources().getConfiguration().fontScale;
+        s.setTextZoom(Math.min(MAX_TEXT_ZOOM, Math.round(fontScale * 100)));
         s.setSupportMultipleWindows(false);
         s.setJavaScriptCanOpenWindowsAutomatically(false);
         s.setGeolocationEnabled(false);
@@ -104,12 +154,12 @@ public class MainActivity extends Activity {
         web.setVerticalScrollBarEnabled(false);
         web.setHorizontalScrollBarEnabled(false);
         // Segurar o pato é a zoeira máxima; sem isso o Android abriria seleção de texto.
+        // No campo do nome do time o toque longo passa, pra dar pra selecionar e colar.
         web.setHapticFeedbackEnabled(false);
-        web.setLongClickable(false);
         web.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                return true;
+                return ((WebView) v).getHitTestResult().getType() != WebView.HitTestResult.EDIT_TEXT_TYPE;
             }
         });
 
@@ -123,6 +173,26 @@ public class MainActivity extends Activity {
             @SuppressWarnings("deprecation")
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 return !isAppUrl(url);
+            }
+
+            /** Sem isto, o app inteiro cai junto quando o processo que desenha a página morre (API 26+). */
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                if (view == web) {
+                    ViewGroup parent = (ViewGroup) view.getParent();
+                    if (parent != null) parent.removeView(view);
+                    web = null;
+                }
+                view.destroy();
+                long now = SystemClock.elapsedRealtime();
+                boolean diedAgain = lastRendererDeath != 0 && now - lastRendererDeath < 10000;
+                lastRendererDeath = now;
+                if (!isFinishing()) {
+                    // O placar está no localStorage: recriar a tela volta tudo como estava.
+                    if (diedAgain) finish();
+                    else recreate();
+                }
+                return true;
             }
         });
         web.addJavascriptInterface(new Bridge(), "TrucoAndroid");
@@ -245,15 +315,29 @@ public class MainActivity extends Activity {
             super.onBackPressed();
             return;
         }
-        // Voltar fecha o menu ou o teclado do nome do time; se não tiver nada aberto, sai.
+        // Voltar fecha o menu ou encerra a edição do nome do time; se não tiver nada aberto, sai.
         web.evaluateJavascript("(window.trucoBack && window.trucoBack()) ? 1 : 0", new ValueCallback<String>() {
             @Override
             public void onReceiveValue(String handled) {
-                if (!"1".equals(handled) && !isFinishing()) {
+                // Se a resposta chegar depois do app sair da tela, ignora: no Android 7 o
+                // onBackPressed depois do onSaveInstanceState derruba o app.
+                if (!"1".equals(handled) && !isFinishing() && !stateSaved) {
                     MainActivity.super.onBackPressed();
                 }
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        stateSaved = false;
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        stateSaved = true;
     }
 
     @Override

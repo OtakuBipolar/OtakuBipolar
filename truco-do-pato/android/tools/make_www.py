@@ -32,6 +32,16 @@ html = remove(r'<link rel="stylesheet" href="https://fonts\.googleapis\.com[^>]*
 html = remove(r"\n  /\* PWA:BEGIN \*/.*?/\* PWA:END \*/\n", html, re.S)
 html = re.sub(r"<!-- ARTIFACT:[A-Z]+ -->\n", "", html)
 
+# O gancho de recarga do visualizador de artifacts usa ?. e ??, que um WebView anterior ao
+# Chromium 80 nem consegue ler (o script inteiro morreria). No APK ele não serve pra nada.
+HOT_RELOAD = """  window.claude?.hot?.snapshot?.(() => ({ state, history }));
+  if (window.claude?.hot?.ready) window.claude.hot.ready(start);
+  else start(window.claude?.hot?.data ?? {});
+"""
+if html.count(HOT_RELOAD) != 1:
+    sys.exit("make_www: não achei o gancho window.claude.hot no index.html")
+html = html.replace(HOT_RELOAD, "  start({});\n")
+
 
 def face(family, weight, file):
     data = base64.b64encode((fonts_dir / file).read_bytes()).decode("ascii")
@@ -49,9 +59,13 @@ if html.count("<style>") != 1:
     sys.exit("make_www: esperava exatamente um <style> no index.html")
 html = html.replace("<style>", f"<style>\n{fonts_css}\n</style>\n<style>", 1)
 
-for leftover in ("fonts.googleapis.com", "fonts.gstatic.com", "serviceWorker", "manifest.webmanifest"):
+for leftover in ("fonts.googleapis.com", "fonts.gstatic.com", "serviceWorker", "manifest.webmanifest", "window.claude"):
     if leftover in html:
         sys.exit(f"make_www: sobrou referência a {leftover} no HTML do APK")
+# O APK não tem permissão de internet: qualquer URL externa ficaria quebrada.
+external = re.search(r"https?://[^\s\"')]+", html)
+if external:
+    sys.exit(f"make_www: sobrou URL externa no HTML do APK: {external.group(0)}")
 
 if out_dir.exists():
     shutil.rmtree(out_dir)
