@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
     private static final long MAX_VIBRATION_MS = 1000;
     private static final int MAX_SPEECH_CHARS = 60;
     private static final int MAX_TEXT_ZOOM = 130;
-    /** A página usa recursos do Chromium 87+ (inset, padding-inline, aspect-ratio). */
+    /** A página usa padding-inline/padding-block e flex gap, que pedem Chromium 87+. */
     static final int MIN_WEBVIEW_VERSION = 87;
 
     /** Quando o processo que desenha a página morreu pela última vez (pra não entrar em loop). */
@@ -53,6 +53,8 @@ public class MainActivity extends Activity {
     private WebView web;
     private TextToSpeech tts;
     private volatile boolean ttsReady;
+    /** "pending" enquanto a voz inicia, "ok" com português, "missing" sem voz em português. */
+    private volatile String ttsState = "pending";
     private Vibrator vibrator;
     private boolean stateSaved;
 
@@ -208,12 +210,17 @@ public class MainActivity extends Activity {
         tts = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int status) {
-                if (status != TextToSpeech.SUCCESS || tts == null) return;
+                if (tts == null) return;
+                if (status != TextToSpeech.SUCCESS) {
+                    ttsState = "missing";
+                    return;
+                }
                 int result = tts.setLanguage(new Locale("pt", "BR"));
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                     result = tts.setLanguage(new Locale("pt"));
                 }
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    ttsState = "missing";
                     return;
                 }
                 tts.setAudioAttributes(new AudioAttributes.Builder()
@@ -223,6 +230,7 @@ public class MainActivity extends Activity {
                 tts.setSpeechRate(1.15f);
                 tts.setPitch(1.1f);
                 ttsReady = true;
+                ttsState = "ok";
             }
         });
     }
@@ -283,6 +291,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public boolean canSpeak() {
             return ttsReady;
+        }
+
+        @JavascriptInterface
+        public String ttsState() {
+            return ttsState;
         }
 
         @JavascriptInterface
